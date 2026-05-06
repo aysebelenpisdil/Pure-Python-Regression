@@ -24,6 +24,30 @@ def read_data(filepath):
     return x1_list, x2_list, x3_list, y_list
 
 
+def remove_outliers(x1, x2, x3, y):
+    def mean(lst):
+        return sum(lst) / len(lst)
+
+    def std(lst, m):
+        return math.sqrt(sum((v - m) ** 2 for v in lst) / len(lst))
+
+    m1, m2, m3, my = mean(x1), mean(x2), mean(x3), mean(y)
+    s1, s2, s3, sy = std(x1, m1), std(x2, m2), std(x3, m3), std(y, my)
+
+    cx1, cx2, cx3, cy = [], [], [], []
+    for i in range(len(y)):
+        z1 = abs((x1[i] - m1) / s1) if s1 != 0 else 0
+        z2 = abs((x2[i] - m2) / s2) if s2 != 0 else 0
+        z3 = abs((x3[i] - m3) / s3) if s3 != 0 else 0
+        zy = abs((y[i]  - my) / sy) if sy != 0 else 0
+        if z1 <= 3 and z2 <= 3 and z3 <= 3 and zy <= 3:
+            cx1.append(x1[i])
+            cx2.append(x2[i])
+            cx3.append(x3[i])
+            cy.append(y[i])
+    return cx1, cx2, cx3, cy
+
+
 def split_data(x1, x2, x3, y, train_ratio=0.70):
     n = len(y)
     indices = list(range(n))
@@ -74,8 +98,23 @@ def save_to_file(predictions, filepath):
             f.write(f"{val:.6f}\n")
 
 
+def interactive_prediction(best_name, a, b):
+    while True:
+        user_input = input(f"{best_name} için bir değer girin (Çıkmak için 'q'): ")
+        if user_input.strip().lower() == 'q':
+            break
+        try:
+            x_val = float(user_input)
+            y_hat = a + b * x_val
+            print(f"Tahmin edilen Next_Tmax: {y_hat:.6f}")
+        except ValueError:
+            print("Geçersiz giriş. Lütfen sayısal bir değer girin.")
+
+
 def main():
     x1, x2, x3, y = read_data('Bias_correction_ucl.csv')
+
+    x1, x2, x3, y = remove_outliers(x1, x2, x3, y)
 
     (tr_x1, tr_x2, tr_x3, tr_y), (te_x1, te_x2, te_x3, te_y) = split_data(x1, x2, x3, y)
 
@@ -115,6 +154,8 @@ def main():
     print(f"\nTest SSE: {te_sse:.6f}")
 
     save_to_file(te_preds, 'tahminler_test.txt')
+
+    interactive_prediction(best_name, a, b)
 
 
 if __name__ == '__main__':
